@@ -35,6 +35,9 @@ import codecs
 
 class Dynalist():
 
+    file_id: None
+    version: 0
+
     def __init__(self, file_id, token=None):
         """
         If `token` is not provided, :any:`_auth()` will attempt
@@ -61,9 +64,11 @@ class Dynalist():
             'https://dynalist.io/api/v1/doc/read',
             json={'token': self.TOKEN, 'file_id': file_id})
 
-        nodes = res.json()['nodes']
+        json = res.json()
+        nodes = json['nodes']
 
         self.file_id = file_id
+        self.version = json['version']
         self.doc = nodes
 
         self.doc_dict = {n['id']:n for n in nodes}
@@ -72,6 +77,18 @@ class Dynalist():
         _info = {'title': self.doc_dict['root']['content']}
         self.file = _info
 
+    def check_for_updates(self):
+        res = requests.post(
+        'https://dynalist.io/api/v1/doc/check_for_updates',
+        json={'token': self.TOKEN, 'file_ids': [self.file_id]})
+
+        json = res.json()
+        return json['versions'][self.file_id] == self.version
+
+
+##################
+#  File Methods  #
+##################
     def to_json(self, file_name=None):
         """
 
@@ -99,7 +116,6 @@ class Dynalist():
         _url = 'https://dynalist.io/d/'+self.file_id+'#z=' + node['id']
 
         return '[{}]({})'.format(node['content'],_url)
-
 
     def get_children(self, node_id='root'):
         node = self.doc_dict.get(node_id)
